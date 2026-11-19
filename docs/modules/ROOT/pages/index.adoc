@@ -1,0 +1,37 @@
+= Base libraries
+:description: The technical libraries every FF Logistic application builds on.
+
+Technical building blocks, with no business in them: every application of both implementations, and the shared services, use the same ones. The business lives in the domain cores (ff-logistic-shared).
+
+[cols="2,4",options="header"]
+|===
+| Artifact | What it gives
+
+| `ff-base-bom` | Every dependency version, in one place: Spring Boot, Spring Modulith, the AWS SDK and these libraries
+| `ff-base-parent` | Java 25 and the build conventions. Applications opt in to the executable jar with `build-info` and to `git.properties`, so `/actuator/info` names the running build and commit.
+| `ff-base-tenant` | The current tenant of a request or job: `TenantContext`, the tenant id format, `TenantAccessException`. No dependencies.
+| `ff-base-web` | RFC 9457 problem responses for domain, validation and tenant errors
+| `ff-base-security` | A stateless JWT resource server that sets the tenant context from the token
+| `ff-base-persistence` | Tenant-aware JPA entities (Hibernate `@TenantId`) and database sequences
+| `ff-base-storage` | Tenant documents in an S3-compatible store, through presigned, write-once links
+|===
+
+Each library is a Spring Boot auto-configuration: adding the dependency is the whole setup.
+
+[mermaid]
+....
+flowchart BT
+  BOM[ff-base-bom] --> PARENT[ff-base-parent]
+  TEN[ff-base-tenant]
+  TEN --> WEB[ff-base-web] & SEC[ff-base-security] & PER[ff-base-persistence] & STO[ff-base-storage]
+  PARENT -. builds .-> TEN & WEB & SEC & PER & STO
+....
+
+== Building
+
+[source,bash]
+----
+./build.sh          # installs the BOM and the parent, then the libraries, into ~/.m2
+----
+
+The other repositories build against what this installs.

@@ -1,0 +1,7 @@
+# The base libraries' part of the documentation site (ff-logistic-docs assembles it).
+name: base
+title: Base libraries
+version: ~
+start_page: index.adoc
+nav:
+  - modules/ROOT/nav.adoc
