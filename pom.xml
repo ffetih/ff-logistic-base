@@ -29,5 +29,6 @@
         <module>ff-base-security</module>
         <module>ff-base-persistence</module>
         <module>ff-base-storage</module>
+        <module>ff-base-app</module>
     </modules>
 </project>

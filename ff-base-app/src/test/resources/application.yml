@@ -1,0 +1,4 @@
+# The test application's own setting wins over the chassis default (false).
+spring:
+  jpa:
+    open-in-view: true
