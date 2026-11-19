@@ -1,0 +1,1 @@
+ALTER TABLE beta_items ADD COLUMN name VARCHAR(40);

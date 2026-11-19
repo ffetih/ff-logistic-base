@@ -1,0 +1,2 @@
+org.springframework.boot.sql.init.dependency.DatabaseInitializerDetector=\
+com.siose.ff.base.persistence.autoconfigure.AreaMigrationsDatabaseInitializerDetector

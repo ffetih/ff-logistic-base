@@ -56,6 +56,11 @@
                 <artifactId>ff-base-storage</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.siose.ff</groupId>
+                <artifactId>ff-base-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>

@@ -1,0 +1,1 @@
+CREATE TABLE beta_items (id BIGINT PRIMARY KEY);

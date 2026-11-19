@@ -12,8 +12,9 @@ Technical building blocks, with no business in them: every application of both i
 | `ff-base-tenant` | The current tenant of a request or job: `TenantContext`, the tenant id format, `TenantAccessException`. No dependencies.
 | `ff-base-web` | RFC 9457 problem responses for domain, validation and tenant errors
 | `ff-base-security` | A stateless JWT resource server that sets the tenant context from the token
-| `ff-base-persistence` | Tenant-aware JPA entities (Hibernate `@TenantId`) and database sequences
+| `ff-base-persistence` | Tenant-aware JPA entities (Hibernate `@TenantId`), database sequences, and `MigrationArea`: each business area runs its own Flyway scripts (`db/migration/<area>`) with its own history table (`<area>_flyway_history`), so one area in a service and four in the modulith migrate the same tables the same way
 | `ff-base-storage` | Tenant documents in an S3-compatible store, through presigned, write-once links
+| `ff-base-app` | The application chassis, the same in both implementations: shared defaults (health groups, probes, virtual threads), the `release` health group the canary analysis reads, `/api/v1/me`, and `FfApplication.run`, which turns the image into a migration Job under the `migrate` profile
 |===
 
 Each library is a Spring Boot auto-configuration: adding the dependency is the whole setup.
@@ -23,8 +24,8 @@ Each library is a Spring Boot auto-configuration: adding the dependency is the w
 flowchart BT
   BOM[ff-base-bom] --> PARENT[ff-base-parent]
   TEN[ff-base-tenant]
-  TEN --> WEB[ff-base-web] & SEC[ff-base-security] & PER[ff-base-persistence] & STO[ff-base-storage]
-  PARENT -. builds .-> TEN & WEB & SEC & PER & STO
+  TEN --> WEB[ff-base-web] & SEC[ff-base-security] & PER[ff-base-persistence] & STO[ff-base-storage] & APP[ff-base-app]
+  PARENT -. builds .-> TEN & WEB & SEC & PER & STO & APP
 ....
 
 == Building
