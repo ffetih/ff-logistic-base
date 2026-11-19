@@ -1,1 +1,2 @@
 com.siose.ff.base.persistence.autoconfigure.TenantPersistenceAutoConfiguration
+com.siose.ff.base.persistence.autoconfigure.AreaMigrationsAutoConfiguration

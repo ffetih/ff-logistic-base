@@ -1,0 +1,1 @@
+CREATE TABLE alpha_items (id BIGINT PRIMARY KEY);
