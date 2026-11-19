@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.siose.ff</groupId>
+        <artifactId>ff-base-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../ff-base-parent/pom.xml</relativePath>
+    </parent>
+
+    <!-- groupId and version come from the parent: base libraries are released together -->
+    <artifactId>ff-base-tenant</artifactId>
+    <name>FF Logistic - Tenant</name>
+    <description>The current tenant of a request or job: TenantContext, the tenant id format (TenantIds) and TenantAccessException. No dependencies.</description>
+
+    <properties>
+        <!-- Libraries declare exactly what they use -->
+        <dependency-analysis.fail-on-warning>true</dependency-analysis.fail-on-warning>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

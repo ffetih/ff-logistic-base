@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.siose.ff</groupId>
+        <artifactId>ff-base-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../ff-base-parent/pom.xml</relativePath>
+    </parent>
+
+    <!-- groupId and version come from the parent: base libraries are released together -->
+    <artifactId>ff-base-web</artifactId>
+    <name>FF Logistic - Web</name>
+    <description>RFC 9457 problem responses for domain, validation and tenant errors (auto-configured).</description>
+
+    <properties>
+        <!-- Libraries declare exactly what they use -->
+        <dependency-analysis.fail-on-warning>true</dependency-analysis.fail-on-warning>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.siose.ff</groupId>
+            <artifactId>ff-base-tenant</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <!-- ConcurrencyFailureException (optimistic or lock-timeout failures) -> 409 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <!-- Logs why a dependency (503) was unavailable -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

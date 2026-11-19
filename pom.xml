@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Aggregator for this repository. It lists the modules so one reactor build
+    can see them. It is not a parent: libraries inherit ff-base-parent, and the
+    applications import ff-base-bom. Do not point a parent at this pom.
+
+    A clean machine cannot build the reactor in one pass. ff-base-parent imports
+    ff-base-bom, and Maven does not resolve that import from a sibling module.
+    build.sh installs the BOM and the parent first, then runs this reactor.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.siose.ff</groupId>
+    <artifactId>ff-base</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>FF Logistic - Base</name>
+    <description>Aggregator for the shared libraries. Not a parent.</description>
+
+    <modules>
+        <module>ff-base-bom</module>
+        <module>ff-base-parent</module>
+        <module>ff-base-tenant</module>
+        <module>ff-base-web</module>
+        <module>ff-base-security</module>
+        <module>ff-base-persistence</module>
+        <module>ff-base-storage</module>
+    </modules>
+</project>
