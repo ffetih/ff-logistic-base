@@ -1,0 +1,21 @@
+# Every push and pull request: build and test (the same build.sh as locally).
+#
+# The steps are ff-logistic-runtime's reusable workflows, the same for every repository.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ffetih/ff-logistic-runtime/.github/workflows/java-build.yml@main
