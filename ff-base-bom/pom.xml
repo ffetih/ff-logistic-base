@@ -53,6 +53,11 @@
             </dependency>
             <dependency>
                 <groupId>com.siose.ff</groupId>
+                <artifactId>ff-base-events</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.siose.ff</groupId>
                 <artifactId>ff-base-storage</artifactId>
                 <version>${project.version}</version>
             </dependency>

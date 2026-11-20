@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.List;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,17 +42,21 @@ public class AreaMigrations implements InitializingBean {
     @Override
     public void afterPropertiesSet() {
         for (MigrationArea area : areas) {
-            MigrateResult result = Flyway.configure()
+            FluentConfiguration flyway = Flyway.configure()
                     .dataSource(dataSource)
                     .locations(area.location())
                     .table(area.historyTable())
                     // A history table of its own in a database that already has other tables:
                     // without this Flyway would refuse to start an area in a non-empty schema.
                     .baselineOnMigrate(true)
-                    .baselineVersion("0")
-                    .load()
-                    .migrate();
-            log.info("Area {}: {} migration(s) applied, now at version {}", area.name(),
+                    .baselineVersion("0");
+            if (area.schema() != null) {
+                // Created if missing; the scripts and the history table live in it.
+                flyway.schemas(area.schema());
+            }
+            MigrateResult result = flyway.load().migrate();
+            log.info("Area {}{}: {} migration(s) applied, now at version {}", area.name(),
+                    area.schema() == null ? "" : " (schema " + area.schema() + ")",
                     result.migrationsExecuted, result.targetSchemaVersion);
         }
     }

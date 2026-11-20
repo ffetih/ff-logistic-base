@@ -81,6 +81,20 @@ class AreaMigrationsTest {
     }
 
     @Test
+    void anAreaMayKeepItsTablesInASchemaOfItsOwn() {
+        runner(MigrationArea.of("alpha"), MigrationArea.of("gamma", "own")).run(context -> {
+            JdbcTemplate jdbc = context.getBean(JdbcTemplate.class);
+            // The script says "create table gamma_items": unqualified, it lands in the area's schema.
+            assertThat(count(jdbc, "select count(*) from \"own\".gamma_items")).isZero();
+            assertThat(count(jdbc, "select count(*) from \"own\".\"gamma_flyway_history\" where \"type\" = 'SQL'"))
+                    .isEqualTo(1);
+            assertThat(count(jdbc, "select count(*) from information_schema.tables where table_name = 'gamma_items'"
+                    + " and table_schema <> 'own'")).isZero();
+            assertThat(count(jdbc, "select count(*) from alpha_items")).isZero();
+        });
+    }
+
+    @Test
     void canBeSwitchedOff() {
         runner(MigrationArea.of("alpha")).withPropertyValues("ff.migrations.enabled=false")
                 .run(context -> assertThat(context).doesNotHaveBean(AreaMigrations.class));
@@ -92,5 +106,6 @@ class AreaMigrationsTest {
         assertThat(MigrationArea.of("routing").location()).isEqualTo("classpath:db/migration/routing");
         assertThatIllegalArgumentException().isThrownBy(() -> MigrationArea.of("Ware-housing"));
         assertThatIllegalArgumentException().isThrownBy(() -> MigrationArea.of("x"));
+        assertThatIllegalArgumentException().isThrownBy(() -> MigrationArea.of("outbox", "Own-Schema"));
     }
 }
