@@ -12,7 +12,8 @@ Technical building blocks, with no business in them: every application of both i
 | `ff-base-tenant` | The current tenant of a request or job: `TenantContext`, the tenant id format, `TenantAccessException`. No dependencies.
 | `ff-base-web` | RFC 9457 problem responses for domain, validation and tenant errors
 | `ff-base-security` | A stateless JWT resource server that sets the tenant context from the token
-| `ff-base-persistence` | Tenant-aware JPA entities (Hibernate `@TenantId`), database sequences, and `MigrationArea`: each business area runs its own Flyway scripts (`db/migration/<area>`) with its own history table (`<area>_flyway_history`), so one area in a service and four in the modulith migrate the same tables the same way
+| `ff-base-persistence` | Tenant-aware JPA entities (Hibernate `@TenantId`), database sequences, and `MigrationArea`: each business area runs its own Flyway scripts (`db/migration/<area>`) with its own history table (`<area>_flyway_history`), so one area in a service and four in the modulith migrate the same tables the same way. An area may also keep its tables in a schema of its own, as the outbox does
+| `ff-base-events` | The outbox of one process: Spring Modulith's event publication registry in a schema of the process's own (`ff.events.schema`: `modulith`, or the service's name), migrated as the area `outbox`, and kept: unfinished events published again from one pod at a time with a growing wait, completed ones deleted after a week (xref:ff-logistic::decisions.adoc#d12[decision 12])
 | `ff-base-storage` | Tenant documents in an S3-compatible store, through presigned, write-once links
 | `ff-base-app` | The application chassis, the same in both implementations: shared defaults (health groups, probes, virtual threads), the `release` health group the canary analysis reads, `/api/v1/me`, and `FfApplication.run`, which turns the image into a migration Job under the `migrate` profile
 |===
@@ -25,6 +26,7 @@ flowchart BT
   BOM[ff-base-bom] --> PARENT[ff-base-parent]
   TEN[ff-base-tenant]
   TEN --> WEB[ff-base-web] & SEC[ff-base-security] & PER[ff-base-persistence] & STO[ff-base-storage] & APP[ff-base-app]
+  PER --> EVT[ff-base-events]
   PARENT -. builds .-> TEN & WEB & SEC & PER & STO & APP
 ....
 

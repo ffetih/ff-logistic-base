@@ -28,6 +28,7 @@
         <module>ff-base-web</module>
         <module>ff-base-security</module>
         <module>ff-base-persistence</module>
+        <module>ff-base-events</module>
         <module>ff-base-storage</module>
         <module>ff-base-app</module>
     </modules>

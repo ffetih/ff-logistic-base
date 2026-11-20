@@ -20,7 +20,7 @@ import org.springframework.core.io.ClassPathResource;
  * {@code application.yml}, its environment and its arguments override any of them.
  *
  * <p>With the {@code migrate} profile it also turns the web server off, before Spring Boot decides
- * which kind of application to start.
+ * which kind of application to start, and keeps Kafka listeners from starting.
  *
  * <p>Runs after Spring Boot has read the configuration files, so the active profiles are known.
  */
@@ -38,8 +38,10 @@ public class FfDefaults implements EnvironmentPostProcessor, Ordered {
             throw new UncheckedIOException("Cannot read " + DEFAULTS, e);
         }
         if (environment.matchesProfiles(FfApplication.MIGRATE_PROFILE)) {
+            // No web server, and no Kafka listener taking messages while the Job only migrates.
             environment.getPropertySources().addFirst(new MapPropertySource("ffMigrate",
-                    Map.of("spring.main.web-application-type", "none")));
+                    Map.of("spring.main.web-application-type", "none",
+                            "spring.kafka.listener.auto-startup", "false")));
         }
     }
 
