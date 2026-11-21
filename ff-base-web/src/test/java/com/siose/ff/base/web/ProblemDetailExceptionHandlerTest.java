@@ -1,5 +1,6 @@
 package com.siose.ff.base.web;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.siose.ff.base.tenant.TenantAccessException;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 class ProblemDetailExceptionHandlerTest {
 
@@ -40,28 +43,58 @@ class ProblemDetailExceptionHandlerTest {
         assertThat(problem.getDetail()).isEqualTo("The request has no body; this endpoint expects JSON.");
     }
 
+    private record Shipment(String consignorName, double grossWeightKg, java.util.List<Leg> legs) {
+    }
+
+    private record Leg(String mode, double distanceKm) {
+    }
+
+    /** What Spring does with a body it cannot read: the parser's exception, wrapped. */
+    private static HttpMessageNotReadableException readWithARealParser(String json) {
+        try {
+            JsonMapper.builder().build().readValue(new ByteArrayInputStream(json.getBytes(UTF_8)), Shipment.class);
+        } catch (JacksonException parser) {
+            return new HttpMessageNotReadableException("JSON parse error: " + parser.getOriginalMessage(), parser, BODY);
+        }
+        throw new AssertionError("expected " + json + " to be unreadable");
+    }
+
     @Test
-    void anUnreadableBodySaysWhereTheParserStoppedAndNothingElse() {
-        Exception parser = new IllegalStateException(
-                "Unexpected character ('}' (code 125)): was expecting double-quote to start field name\n"
-                        + " at [Source: REDACTED; line: 1, column: 25]");
-        ProblemDetail problem = handler.handleUnreadableBody(
-                new HttpMessageNotReadableException("JSON parse error: " + parser.getMessage(), parser, BODY));
+    void brokenJsonSaysWhereTheParserStopped() {
+        ProblemDetail problem = handler.handleUnreadableBody(readWithARealParser("{\"consignorName\": \"x\",}"));
 
         assertThat(problem.getStatus()).isEqualTo(400);
         assertThat(problem.getType().toString()).isEqualTo("urn:siose-ff:problem:unreadable-body");
         assertThat(problem.getTitle()).isEqualTo("Unreadable Request Body");
         assertThat(problem.getDetail())
-                .isEqualTo("The request body is not valid JSON for this endpoint (line 1, column 25).");
+                .isEqualTo("The request body is not valid JSON for this endpoint (line 1, column 23).");
     }
 
     @Test
-    void anUnreadableBodyWithoutALocationStillHasADetail() {
-        ProblemDetail problem = handler.handleUnreadableBody(new HttpMessageNotReadableException(
-                "Cannot deserialize value of type `double` from String \"abc\"", BODY));
+    void aWordForANumberNamesThePropertyAndNoJavaType() {
+        ProblemDetail problem = handler.handleUnreadableBody(readWithARealParser(
+                "{\n  \"consignorName\": \"x\",\n  \"grossWeightKg\": \"heavy\"\n}"));
 
-        assertThat(problem.getDetail()).isEqualTo("The request body is not valid JSON for this endpoint.")
-                .doesNotContain("double");
+        assertThat(problem.getDetail())
+                .isEqualTo("The request body is not valid JSON for this endpoint at grossWeightKg (line 3, column 20).")
+                .doesNotContain("double", "Shipment");
+    }
+
+    @Test
+    void aNestedPropertyIsNamedWithItsPath() {
+        ProblemDetail problem = handler.handleUnreadableBody(readWithARealParser(
+                "{\"legs\": [{\"mode\": \"ROAD\", \"distanceKm\": 12}, {\"mode\": \"RAIL\", \"distanceKm\": \"far\"}]}"));
+
+        assertThat(problem.getDetail())
+                .isEqualTo("The request body is not valid JSON for this endpoint at legs[1].distanceKm (line 1, column 78).");
+    }
+
+    @Test
+    void anUnreadableBodyWithoutAParserStillHasADetail() {
+        ProblemDetail problem = handler.handleUnreadableBody(new HttpMessageNotReadableException(
+                "I/O error while reading input message", BODY));
+
+        assertThat(problem.getDetail()).isEqualTo("The request body is not valid JSON for this endpoint.");
     }
 
     @Test

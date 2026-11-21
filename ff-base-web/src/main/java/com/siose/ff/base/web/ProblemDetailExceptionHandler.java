@@ -3,8 +3,6 @@ package com.siose.ff.base.web;
 import com.siose.ff.base.tenant.TenantAccessException;
 import java.net.URI;
 import java.time.Instant;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +14,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.TokenStreamLocation;
 
 /**
  * Turns exceptions into RFC 9457 problem responses, the same way in every product.
@@ -28,9 +28,6 @@ public class ProblemDetailExceptionHandler {
     static final String PROBLEM_TYPE_PREFIX = "urn:siose-ff:problem:";
 
     private static final Logger log = LoggerFactory.getLogger(ProblemDetailExceptionHandler.class);
-
-    /** Where a JSON parser stopped, as its messages put it: "line: 1, column: 25". */
-    private static final Pattern PARSER_LOCATION = Pattern.compile("line: (\\d+), column: (\\d+)");
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
@@ -78,7 +75,8 @@ public class ProblemDetailExceptionHandler {
     /**
      * The body is missing, is not JSON, or does not fit the request's type (a word where a number
      * goes). Spring's own answer is a bare 400 with neither title nor detail. The parser's message
-     * is not passed on, since it names internal classes; only where it stopped is.
+     * is not passed on, since it names internal classes. What is passed on comes from the parser's
+     * exception itself: the property it was reading, which is part of the API, and where it stopped.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ProblemDetail handleUnreadableBody(HttpMessageNotReadableException ex) {
@@ -87,12 +85,30 @@ public class ProblemDetailExceptionHandler {
             return problem(HttpStatus.BAD_REQUEST, "The request has no body; this endpoint expects JSON.",
                     "Missing Request Body", "missing-body");
         }
-        Throwable cause = NestedExceptionUtils.getMostSpecificCause(ex);
-        Matcher at = PARSER_LOCATION.matcher(cause.getMessage() == null ? "" : cause.getMessage());
-        String where = at.find() ? " (line " + at.group(1) + ", column " + at.group(2) + ")" : "";
         return problem(HttpStatus.BAD_REQUEST,
-                "The request body is not valid JSON for this endpoint" + where + ".",
+                "The request body is not valid JSON for this endpoint" + whereTheParserStopped(ex) + ".",
                 "Unreadable Request Body", "unreadable-body");
+    }
+
+    /** " at grossWeightKg (line 1, column 19)", or less when the parser knows less, or "". */
+    private static String whereTheParserStopped(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof JacksonException parser) {
+                StringBuilder path = new StringBuilder();
+                for (JacksonException.Reference step : parser.getPath()) {
+                    if (step.getPropertyName() != null) {
+                        path.append(path.isEmpty() ? "" : ".").append(step.getPropertyName());
+                    } else if (step.getIndex() >= 0) {
+                        path.append('[').append(step.getIndex()).append(']');
+                    }
+                }
+                TokenStreamLocation at = parser.getLocation();
+                String place = at == null || at.getLineNr() < 1 ? ""
+                        : " (line " + at.getLineNr() + ", column " + at.getColumnNr() + ")";
+                return (path.isEmpty() ? "" : " at " + path) + place;
+            }
+        }
+        return "";
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
