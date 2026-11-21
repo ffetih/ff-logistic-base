@@ -3,6 +3,8 @@ package com.siose.ff.base.web;
 import com.siose.ff.base.tenant.TenantAccessException;
 import java.net.URI;
 import java.time.Instant;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +12,7 @@ import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -25,6 +28,9 @@ public class ProblemDetailExceptionHandler {
     static final String PROBLEM_TYPE_PREFIX = "urn:siose-ff:problem:";
 
     private static final Logger log = LoggerFactory.getLogger(ProblemDetailExceptionHandler.class);
+
+    /** Where a JSON parser stopped, as its messages put it: "line: 1, column: 25". */
+    private static final Pattern PARSER_LOCATION = Pattern.compile("line: (\\d+), column: (\\d+)");
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
@@ -67,6 +73,26 @@ public class ProblemDetailExceptionHandler {
         Throwable cause = ex.getCause() == null ? null : NestedExceptionUtils.getMostSpecificCause(ex.getCause());
         log.warn("{} ({})", ex.getMessage(), cause == null ? "no cause" : cause.toString());
         return problem(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), ex.problemTitle(), ex.problemSlug());
+    }
+
+    /**
+     * The body is missing, is not JSON, or does not fit the request's type (a word where a number
+     * goes). Spring's own answer is a bare 400 with neither title nor detail. The parser's message
+     * is not passed on, since it names internal classes; only where it stopped is.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleUnreadableBody(HttpMessageNotReadableException ex) {
+        String message = ex.getMessage() == null ? "" : ex.getMessage();
+        if (message.startsWith("Required request body is missing")) {
+            return problem(HttpStatus.BAD_REQUEST, "The request has no body; this endpoint expects JSON.",
+                    "Missing Request Body", "missing-body");
+        }
+        Throwable cause = NestedExceptionUtils.getMostSpecificCause(ex);
+        Matcher at = PARSER_LOCATION.matcher(cause.getMessage() == null ? "" : cause.getMessage());
+        String where = at.find() ? " (line " + at.group(1) + ", column " + at.group(2) + ")" : "";
+        return problem(HttpStatus.BAD_REQUEST,
+                "The request body is not valid JSON for this endpoint" + where + ".",
+                "Unreadable Request Body", "unreadable-body");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

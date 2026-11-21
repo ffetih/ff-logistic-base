@@ -3,14 +3,66 @@ package com.siose.ff.base.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.siose.ff.base.tenant.TenantAccessException;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 class ProblemDetailExceptionHandlerTest {
 
     private final ProblemDetailExceptionHandler handler = new ProblemDetailExceptionHandler();
+
+    private static final HttpInputMessage BODY = new HttpInputMessage() {
+        @Override
+        public InputStream getBody() {
+            return new ByteArrayInputStream(new byte[0]);
+        }
+
+        @Override
+        public HttpHeaders getHeaders() {
+            return new HttpHeaders();
+        }
+    };
+
+    @Test
+    void aRequestWithoutABodySaysSo() {
+        ProblemDetail problem = handler.handleUnreadableBody(new HttpMessageNotReadableException(
+                "Required request body is missing: public ShipmentView ShipmentController.create(...)", BODY));
+
+        assertThat(problem.getStatus()).isEqualTo(400);
+        assertThat(problem.getType().toString()).isEqualTo("urn:siose-ff:problem:missing-body");
+        assertThat(problem.getTitle()).isEqualTo("Missing Request Body");
+        assertThat(problem.getDetail()).isEqualTo("The request has no body; this endpoint expects JSON.");
+    }
+
+    @Test
+    void anUnreadableBodySaysWhereTheParserStoppedAndNothingElse() {
+        Exception parser = new IllegalStateException(
+                "Unexpected character ('}' (code 125)): was expecting double-quote to start field name\n"
+                        + " at [Source: REDACTED; line: 1, column: 25]");
+        ProblemDetail problem = handler.handleUnreadableBody(
+                new HttpMessageNotReadableException("JSON parse error: " + parser.getMessage(), parser, BODY));
+
+        assertThat(problem.getStatus()).isEqualTo(400);
+        assertThat(problem.getType().toString()).isEqualTo("urn:siose-ff:problem:unreadable-body");
+        assertThat(problem.getTitle()).isEqualTo("Unreadable Request Body");
+        assertThat(problem.getDetail())
+                .isEqualTo("The request body is not valid JSON for this endpoint (line 1, column 25).");
+    }
+
+    @Test
+    void anUnreadableBodyWithoutALocationStillHasADetail() {
+        ProblemDetail problem = handler.handleUnreadableBody(new HttpMessageNotReadableException(
+                "Cannot deserialize value of type `double` from String \"abc\"", BODY));
+
+        assertThat(problem.getDetail()).isEqualTo("The request body is not valid JSON for this endpoint.")
+                .doesNotContain("double");
+    }
 
     @Test
     void aConcurrentUpdateIsA409ThatSaysToRetry() {
