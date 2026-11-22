@@ -19,9 +19,12 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.CORSRule;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.CreateBucketResponse;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
+import software.amazon.awssdk.services.s3.model.PutBucketCorsRequest;
+import software.amazon.awssdk.services.s3.model.PutBucketCorsResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -104,6 +107,23 @@ class ObjectStorageAdapterTest {
                     "createBucket ff-documents",
                     "putObject ff-documents/ff-tr-distribution/epod/rt-5001/signature.png image/png",
                     "putObject ff-documents/ff-tr-distribution/epod/rt-5001/photo.jpg image/jpeg");
+        }
+    }
+
+    @Test
+    void s3AdapterNamesTheConsoleOriginWhenItPreparesTheBucket() {
+        RecordingS3 recording = new RecordingS3();
+        try (S3ObjectStorageAdapter storage = new S3ObjectStorageAdapter(
+                recording.client(), presigner(), "ff-documents",
+                List.of("http://localhost:8090", "http://localhost:5173"))) {
+
+            storage.store("ff-eu-freight", "ecmr", "SHP-1", "ecmr.pdf", "application/pdf", new byte[] {1});
+
+            assertThat(recording.calls).containsExactly(
+                    "headBucket ff-documents",
+                    "createBucket ff-documents",
+                    "putBucketCors ff-documents http://localhost:8090,http://localhost:5173 GET,PUT,HEAD",
+                    "putObject ff-documents/ff-eu-freight/ecmr/shp-1/ecmr.pdf application/pdf");
         }
     }
 
@@ -217,6 +237,14 @@ class ObjectStorageAdapterTest {
                     bucketExists = true;
                     calls.add("createBucket " + ((CreateBucketRequest) args[0]).bucket());
                     return CreateBucketResponse.builder().build();
+                }
+                case "putBucketCors" -> {
+                    PutBucketCorsRequest put = (PutBucketCorsRequest) args[0];
+                    CORSRule rule = put.corsConfiguration().corsRules().get(0);
+                    calls.add("putBucketCors " + put.bucket()
+                            + " " + String.join(",", rule.allowedOrigins())
+                            + " " + String.join(",", rule.allowedMethods()));
+                    return PutBucketCorsResponse.builder().build();
                 }
                 case "putObject" -> {
                     PutObjectRequest put = (PutObjectRequest) args[0];
