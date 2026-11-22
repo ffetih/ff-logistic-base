@@ -4,6 +4,7 @@ import com.siose.ff.base.storage.StorageObjectDescriptor.StorageMode;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -30,7 +31,10 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
  * is used (environment, profile, instance or pod role), so no secret has to be in configuration.
  *
  * <p>The bucket is created when it is first needed: before the first {@link #store} and before the first
- * upload link, since a client's PUT through a presigned link cannot create it.
+ * upload link, since a client's PUT through a presigned link cannot create it. The same preparation
+ * names the browser origins allowed to use those links. A presigned PUT from the console is a
+ * different origin than the page, and the store answers the browser's preflight only when the
+ * bucket lists that origin.
  *
  * <p>A store that does not answer, or answers with an error other than "not found", is reported as
  * {@link ObjectStoreUnavailableException} (503), with the SDK's exception as the cause for the log.
@@ -43,12 +47,18 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort, AutoCloseable 
     private final S3Client s3;
     private final S3Presigner presigner;
     private final String bucket;
+    private final List<String> browserOrigins;
     private volatile boolean bucketReady;
 
     S3ObjectStorageAdapter(S3Client s3, S3Presigner presigner, String bucket) {
+        this(s3, presigner, bucket, List.of());
+    }
+
+    S3ObjectStorageAdapter(S3Client s3, S3Presigner presigner, String bucket, List<String> browserOrigins) {
         this.s3 = Objects.requireNonNull(s3);
         this.presigner = Objects.requireNonNull(presigner);
         this.bucket = ObjectKeys.segment(bucket, "bucket");
+        this.browserOrigins = List.copyOf(browserOrigins);
     }
 
     public static S3ObjectStorageAdapter create(ObjectStorageProperties properties) {
@@ -84,7 +94,8 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort, AutoCloseable 
                 settings.getEndpoint() != null ? settings.getEndpoint() : "AWS default endpoint",
                 settings.linkEndpoint() != null ? settings.linkEndpoint() : "AWS default endpoint",
                 properties.getBucket());
-        return new S3ObjectStorageAdapter(clientBuilder.build(), presignerBuilder.build(), properties.getBucket());
+        return new S3ObjectStorageAdapter(clientBuilder.build(), presignerBuilder.build(),
+                properties.getBucket(), settings.getBrowserOrigins());
     }
 
     @Override
@@ -192,6 +203,7 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort, AutoCloseable 
                     }
                     createBucket();
                 }
+                allowBrowsers();
             } catch (SdkException ex) {
                 throw unavailable("prepare bucket " + bucket, ex);
             }
@@ -206,6 +218,21 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort, AutoCloseable 
     private void createBucket() {
         log.info("Creating bucket '{}'", bucket);
         s3.createBucket(create -> create.bucket(bucket));
+    }
+
+    /** The console's origin, so a browser can PUT and GET the presigned link. */
+    private void allowBrowsers() {
+        if (browserOrigins.isEmpty()) {
+            return;
+        }
+        log.info("Bucket '{}': browser origins {}", bucket, browserOrigins);
+        s3.putBucketCors(put -> put.bucket(bucket)
+                .corsConfiguration(cors -> cors.corsRules(rule -> rule
+                        .allowedOrigins(browserOrigins)
+                        .allowedMethods("GET", "PUT", "HEAD")
+                        .allowedHeaders("*")
+                        .exposeHeaders("ETag")
+                        .maxAgeSeconds(3000))));
     }
 
     @Override

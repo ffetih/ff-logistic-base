@@ -2,6 +2,7 @@ package com.siose.ff.base.storage;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -76,6 +77,14 @@ public class ObjectStorageProperties {
          */
         private Duration timeout = Duration.ofSeconds(10);
 
+        /**
+         * Origins a browser may use for a presigned PUT or GET. The console is on 8090 and Vite's
+         * dev server on 5173; a page on another port is a different origin, and the store refuses
+         * the browser's preflight until the bucket names it. Empty: the bucket is left without a
+         * browser rule.
+         */
+        private List<String> browserOrigins = List.of("http://localhost:8090", "http://localhost:5173");
+
         boolean hasStaticCredentials() {
             return accessKey != null && !accessKey.isBlank() && secretKey != null && !secretKey.isBlank();
         }
@@ -131,6 +140,14 @@ public class ObjectStorageProperties {
 
         public void setTimeout(Duration timeout) {
             this.timeout = timeout;
+        }
+
+        public List<String> getBrowserOrigins() {
+            return browserOrigins;
+        }
+
+        public void setBrowserOrigins(List<String> browserOrigins) {
+            this.browserOrigins = browserOrigins == null ? List.of() : List.copyOf(browserOrigins);
         }
 
         public boolean isPathStyleAccess() {
