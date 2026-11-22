@@ -4,6 +4,13 @@ spring:
   threads:
     virtual:
       enabled: true
+  # A sent record and a consumed record carry the W3C traceparent header, so a consumer continues
+  # the producer's trace. An application without Kafka ignores the two lines.
+  kafka:
+    template:
+      observation-enabled: true
+    listener:
+      observation-enabled: true
   jpa:
     hibernate:
       # Flyway owns the schema (MigrationArea); Hibernate only checks at start that the entities
@@ -12,7 +19,28 @@ spring:
     # A request's database work happens in its service call, not while the response is written.
     open-in-view: false
 
+logging:
+  pattern:
+    # Present once the OpenTelemetry starter is on the classpath. Empty until a span is current.
+    correlation: "[%X{traceId:-},%X{spanId:-}] "
+
 management:
+  tracing:
+    sampling:
+      # Every request locally. Spring Boot's default is 0.1.
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  logging:
+    export:
+      otlp:
+        # Traces go to Jaeger. Logs stay on the process's own output.
+        enabled: false
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          # The chart sets this to http://jaeger:4318/v1/traces. From the IDE the host port is
+          # not published; a failed export is logged and the process still serves.
+          endpoint: ${TRACING_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
   endpoints:
     web:
       exposure:
