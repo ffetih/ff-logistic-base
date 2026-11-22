@@ -16,7 +16,8 @@ import org.springframework.core.io.ClassPathResource;
 /**
  * Settings every FF application shares, in {@code META-INF/ff/app-defaults.yml}: the actuator
  * endpoints and health groups the chart's probes and the canary analysis call, virtual threads,
- * Hibernate checking the schema instead of creating it. They come last, so an application's own
+ * Hibernate checking the schema instead of creating it, and the trace export to Jaeger. They come
+ * last, so an application's own
  * {@code application.yml}, its environment and its arguments override any of them.
  *
  * <p>With the {@code migrate} profile it also turns the web server off, before Spring Boot decides
